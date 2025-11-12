@@ -1,2 +1,4 @@
 # PBL-SD2
+**INTRODUÇÃO**
 
+Diante das querelas da sociedade moderna, principalmente as referentes a segurança e vigilância de espaços, faz-se necessária a intervenção tecnológica e criativa dos programadores vigentes. Este projeto tem como o objetivo a implementação de um algoritmo que simula um sistema sinótico, atravez de algortmos de zoom in e zoom out. Agora, na parte 2 desse projeto, será criada uma API em Assembly, visando o uso do HPS, o gerenciamento do sistema operacional Linux e a implementação da arquitetura ARM. Este projeto implementa um sistema embarcado na placa DE1-SoC para redimensionamento de imagens (Zoom In/Out). A solução utiliza um design híbrido Hardware/Software, onde o HPS (ARM) executa a lógica de controle principal em C e Assembly, e a FPGA executa um coprocessador gráfico customizado para o processamento de pixels.
