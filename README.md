@@ -579,5 +579,7 @@ ASM_PACKET_CONSTRUCTION:
   <p>A validação do projeto foi realizada executando o procedimento descrito no Manual do Usuário (3.1).</p>
   <p>O console de texto (via SSH) exibiu a sequência correta de operações, confirmando que a aplicação main.c executou, carregou a imagem e que as funções da api.s (como ASM_Store) retornaram sucesso (0).</p>
   <p><strong>Validação do hardware:</strong></p>
+  ![animacao_monitor_lento](https://github.com/user-attachments/assets/aa127bd7-3526-46a7-955e-e9caf044b28d)
+
   </body>
 </html>
