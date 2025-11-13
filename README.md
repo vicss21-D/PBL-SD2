@@ -219,7 +219,7 @@ ERRO: write_pixel falhou no pixel 5731 (codigo -2)
 
   <h5>1. Programar a FPGA:</h5>
   <ul>
-      <li>Insira os cabos de rede e de alimentação da placa (ao todo serão 3);</li>
+      <li><a href="#IMG-01">Insira os cabos de rede e de alimentação da placa (ao todo serão 4, clique para ver);</a></li>
       <li>Ligue a placa e aguarde ela finalizar o processo de ligamento;</li>
       <li>Compile o projeto no Intel Quartus Prime (v23.1std.0. Link de download) para gerar o arquivo .rbf (ex: ghrd.rbf);</li>
       <li>Descarregue o código na placa, através do menu programer;</li>
@@ -327,7 +327,7 @@ Pressione Enter para continuar...</code></pre>
   <h4>3.1.4. Resultados Esperados:</h4>
   <ul>
       <li>O terminal de texto exibirá as mensagens de status (mapeamento, leitura, envio, polling, concluído).</li>
-      <li>O monitor VGA exibirá a imagem image.bmp (ou o gradiente gerado) processada pelo algoritmo (ex: NearestNeighbor).</li>
+      <li><a href="GIF-01">O monitor VGA exibirá a imagem image.bmp (ou o gradiente gerado) processada pelo algoritmo (ex: NearestNeighbor. Veja ele funcionando no link!).</a></li>
       <li>Em caso de zoom máximo/mínimo, a flag usada para sinalizar o limite do processamento será mostrada, e o usuário será encaminhado para duas opções: executar o algoritmo contrário ao da condição extrapolada ou resetar a imagem.</li>
   </ul>
   <p>Observe:</p>
@@ -579,7 +579,9 @@ ASM_PACKET_CONSTRUCTION:
   <p>A validação do projeto foi realizada executando o procedimento descrito no Manual do Usuário (3.1).</p>
   <p>O console de texto (via SSH) exibiu a sequência correta de operações, confirmando que a aplicação main.c executou, carregou a imagem e que as funções da api.s (como ASM_Store) retornaram sucesso (0).</p>
   <p><strong>Validação do hardware:</strong></p>
-  ![animacao_monitor_lento](https://github.com/user-attachments/assets/aa127bd7-3526-46a7-955e-e9caf044b28d)
+  
+  <img src="https://github.com/user-attachments/assets/c287c7c4-ac8a-4bec-8302-07017f7b69ee" alt="Placa FPGA com os cabos de alimentação, rede, coneção e VGA" id="IMG-01" />
+  <img src="https://github.com/user-attachments/assets/c388e819-a144-4fe9-95a6-3357b86d640f" alt="Zoom in funcionando!" id="GIF-01" />
+  
 
-  </body>
 </html>
