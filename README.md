@@ -248,7 +248,7 @@ aluno@de1soc123:~/TEC499/TP04/G02/ASM$ </code></pre>
 api.h coprocessador_2_lib.s exe lib.o lib.s main.c makefile
 aluno@de1soc123:~/TEC499/TP04/G02/ASM$ sudo su
 [sudo] password for aluno: </code></pre>
-  <p>Com o endereço da pasta do projeto, você deve executar os arquivos como super usuário, para isso, digite o comando "sudo su". Depois, insira η senha.</p>
+  <p>Com o endereço da pasta do projeto, você deve executar os arquivos como super usuário, para isso, digite o comando "sudo su". Depois, insira a senha.</p>
 
   <pre><code>aluno@de1soc123:~/TEC499/TP04/G02/ASM$ ls
 api.h coprocessador_2_lib.s exe lib.o lib.s main.c makefile
