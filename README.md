@@ -327,7 +327,7 @@ Pressione Enter para continuar...</code></pre>
   <h4>3.1.4. Resultados Esperados:</h4>
   <ul>
       <li>O terminal de texto exibirá as mensagens de status (mapeamento, leitura, envio, polling, concluído).</li>
-      <li><a href="GIF-01">O monitor VGA exibirá a imagem image.bmp (ou o gradiente gerado) processada pelo algoritmo (ex: NearestNeighbor. Veja ele funcionando no link!).</a></li>
+      <li><a href="#GIF-01">O monitor VGA exibirá a imagem image.bmp (ou o gradiente gerado) processada pelo algoritmo (ex: NearestNeighbor. Veja ele funcionando no link!).</a></li>
       <li>Em caso de zoom máximo/mínimo, a flag usada para sinalizar o limite do processamento será mostrada, e o usuário será encaminhado para duas opções: executar o algoritmo contrário ao da condição extrapolada ou resetar a imagem.</li>
   </ul>
   <p>Observe:</p>
