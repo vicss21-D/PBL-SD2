@@ -2,7 +2,7 @@
 
 **Disciplina:** Sistemas Digitais (TEC499) - 2025.2
 
-**Equipe:** Luis Felipe Carneiro Pimentel e Walace de Jesus Venas
+**Equipe:** Adson Victor, Guilherme Moreira, Maria José
 
 ## Sumário
 1. [Visão Geral do Sistema](#visão-geral-do-sistema)
