@@ -214,7 +214,7 @@ ERRO: write_pixel falhou no pixel 5731 (codigo -2)
   </ul>
 
   <h4>3.1.2. Processo de Execução</h4>
-  <p><em>{trazer fotos e prints do terminal, detalhar mais o ligamento e o funcionamento da placa}</em></p>
+  <p><em>A seção a seguir descreve os passos para a execução do problema</em></p>
   <p>Siga estes passos para compilar e executar o projeto:</p>
 
   <h5>1. Programar a FPGA:</h5>
