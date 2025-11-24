@@ -186,6 +186,7 @@ int enviar_imagem_para_fpga(uint8_t *image_data) {
     return 0;
 }
 
+
 /**
  * @brief Função genérica para executar e testar um algoritmo assíncrono.
  */
@@ -242,15 +243,15 @@ void exibir_menu(int inicializada, int img_carregada_c, int img_enviada_fpga) {
     printf("\n--- Carga de Imagem (Buffer C) ---\n");
     printf(" 2. Carregar Imagem BMP\n");
     printf(" 3. Gerar Gradiente\n");
-    printf(" 4. Enviar Imagem (Buffer C -> FPGA VRAM)\n");
+    
     
     printf("\n--- Comandos/Algoritmos (FPGA) ---\n");
-    printf(" 5. NearestNeighbor\n");
-    printf(" 6. PixelReplication\n");
-    printf(" 7. Decimation\n");
-    printf(" 8. BlockAveraging\n");
-    printf(" 9. Atualizar (ASM_Refresh)\n");
-    printf("10. RESET\n");
+    printf(" 4. NearestNeighbor\n");
+    printf(" 5. PixelReplication\n");
+    printf(" 6. Decimation\n");
+    printf(" 7. BlockAveraging\n");
+    printf(" 8. Atualizar (ASM_Refresh)\n");
+    printf(" 9. RESET\n");
     
     printf("\n----------------------------------------------------------\n");
     printf(" 0. Encerrar API e Sair\n");
@@ -284,6 +285,7 @@ int main() {
     int api_inicializada = 0;
     int img_carregada_c = 0;   // Imagem no buffer C (RAM)
     int img_enviada_fpga = 0; // Imagem enviada para a VRAM do FPGA
+    int flag_nivel_zoom = 0; // 0 = Nenhum, -3 = Min, 3 = Max
     
     int opcao;
     char nome_arquivo[256];
@@ -341,24 +343,7 @@ int main() {
                     img_enviada_fpga = 0; // Buffer C foi atualizado, FPGA está dessincronizado
                 } else {
                     printf("ERRO: Nao foi possivel carregar o BMP.\n");
-                }
-                break;
-
-            // --- OPÇÃO 3: Gerar Gradiente ---
-            case 3:
-                if (!api_inicializada) {
-                    printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
-                    break;
-                }
-                printf("=== PASSO 2: Gerando Gradiente ===\n");
-                gerar_padrao_teste(image_data);
-                printf(">>> SUCESSO: Gradiente gerado no buffer C.\n");
-                img_carregada_c = 1;
-                img_enviada_fpga = 0; // Buffer C foi atualizado, FPGA está dessincronizado
-                break;
-
-            // --- OPÇÃO 4: Enviar Imagem (C -> FPGA) ---
-            case 4:
+                } //marca
                 if (!api_inicializada) {
                     printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
                     break;
@@ -381,12 +366,75 @@ int main() {
                     // Se falhar, melhor fechar
                     goto cleanup_error;
                 }
+                flag_nivel_zoom = 0; // Reseta o nível de zoom
                 break;
+
+            // --- OPÇÃO 3: Gerar Gradiente ---
+            case 3:
+                if (!api_inicializada) {
+                    printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
+                    break;
+                }
+                printf("=== PASSO 2: Gerando Gradiente ===\n");
+                gerar_padrao_teste(image_data);
+                printf(">>> SUCESSO: Gradiente gerado no buffer C.\n");
+                img_carregada_c = 1;
+                img_enviada_fpga = 0; // Buffer C foi atualizado, FPGA está dessincronizado
+                if (!api_inicializada) {
+                    printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
+                    break;
+                }
+                if (!img_carregada_c) {
+                    printf("ERRO: Nenhuma imagem no buffer C. Carregue (2) ou gere (3) primeiro.\n");
+                    break;
+                }    if (ASM_Get_Flag_Min_Zoom() == 1) {
+                        printf("ERRO: A 'Flag de Uso Minimo' (Min_Zoom) esta ATIVA.\n");
+                        printf("   Nao e possivel executar este algoritmo.\n");
+                        printf("   Tente um 'Reset' (Opcao 10) para limpar as flags.\n");
+                        break;
+                    }
+                printf("=== PASSO 3: Enviando Imagem para FPGA ===\n");
+                if (enviar_imagem_para_fpga(image_data) == 0) {
+                    printf(">>> SUCESSO: Imagem enviada para a executar_algoritmoVRAM do FPGA.\n");
+                    img_enviada_fpga = 1;
+                    flag_nivel_zoom = 0; // Reseta o nível de zoom
+                } else {
+                    printf("ERRO FATAL: Falha ao enviar imagem para o FPGA.\n");
+                    // Se falhar, melhor fechar
+                    goto cleanup_error;
+                }
+                break;
+
+            // --- OPÇÃO 4: Enviar Imagem (C -> FPGA) ---
+            //case 4:
+            //    if (!api_inicializada) {
+            //        printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
+            //        break;
+            //    }
+            //    if (!img_carregada_c) {
+            //        printf("ERRO: Nenhuma imagem no buffer C. Carregue (2) ou gere (3) primeiro.\n");
+            //        break;
+            //    }    if (ASM_Get_Flag_Min_Zoom() == 1) {
+            //            printf("ERRO: A 'Flag de Uso Minimo' (Min_Zoom) esta ATIVA.\n");
+            //            printf("   Nao e possivel executar este algoritmo.\n");
+            //            printf("   Tente um 'Reset' (Opcao 10) para limpar as flags.\n");
+            //            break;
+            //        }
+            //    printf("=== PASSO 3: Enviando Imagem para FPGA ===\n");
+            //    if (enviar_imagem_para_fpga(image_data) == 0) {
+            //        printf(">>> SUCESSO: Imagem enviada para a executar_algoritmoVRAM do FPGA.\n");
+            //        img_enviada_fpga = 1;
+            //    } else {
+            //        printf("ERRO FATAL: Falha ao enviar imagem para o FPGA.\n");
+            //        // Se falhar, melhor fechar
+            //        goto cleanup_error;
+            //    }
+            //    break;
 
             // --- OPÇÕES 5-8 (Algoritmos) e 10 (Reset) ---
             
-            case 5: // NearestNeighbor
-            case 6: // PixelReplication
+            case 4: // NearestNeighbor
+            case 5: // PixelReplication
                 if (!api_inicializada) {
                     printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
                     break;
@@ -397,6 +445,12 @@ int main() {
                 }
 
                 // **** VERIFICA APENAS FLAG MÁXIMA ****
+                if (flag_nivel_zoom >= 3) {
+                    printf("ERRO: Nivel maximo de Zoom IN atingido.\n");
+                    printf("   Nao e possivel executar mais algoritmos de Zoom IN.\n");
+                    printf("   Tente um 'Zoom OUT' (6, 7) ou 'Reset' (10).\n");
+                    break; 
+                }
                 if (ASM_Get_Flag_Max_Zoom() == 1) {
                     printf("ERRO: A 'Flag de Uso Maximo' (Max_Zoom) esta ATIVA.\n");
                     printf("   Nao e possivel executar mais algoritmos de Zoom IN.\n");
@@ -407,9 +461,8 @@ int main() {
                 int resultado;
                 if (opcao == 5) resultado = executar_algoritmo("NearestNeighbor", &NearestNeighbor);
                 else if (opcao == 6) resultado = executar_algoritmo("PixelReplication", &PixelReplication);
-                else if (opcao == 7) resultado = executar_algoritmo("Decimation", &Decimation);
-                else if (opcao == 8) resultado = executar_algoritmo("BlockAveraging", &BlockAveraging);
-                else if (opcao == 10) resultado = executar_algoritmo("ASM_Reset", &ASM_Reset);
+                flag_nivel_zoom ++;
+
                 
                 if (resultado != 0) {
                      printf("ERRO FATAL: Falha na execucao do algoritmo.\n");
@@ -417,8 +470,8 @@ int main() {
                 }
                 break;
 
-            case 7: // Decimation
-            case 8: // BlockAveraging
+            case 6: // Decimation
+            case 7: // BlockAveraging
                 if (!api_inicializada) {
                     printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
                     break;
@@ -429,6 +482,12 @@ int main() {
                 }
 
                 // **** VERIFICA APENAS FLAG MÍNIMA ****
+                if (flag_nivel_zoom <= -3) {
+                    printf("ERRO: Nivel minimo de Zoom OUT atingido.\n");
+                    printf("   Nao e possivel executar mais algoritmos de Zoom OUT.\n");
+                    printf("   Tente um 'Zoom IN' (5, 6) ou 'Reset' (10).\n");
+                    break; 
+                }
                 if (ASM_Get_Flag_Min_Zoom() == 1) {
                     printf("ERRO: A 'Flag de Zoom Minimo' (Min_Zoom) esta ATIVA.\n");
                     printf("   Nao e possivel executar mais algoritmos de Zoom OUT.\n");
@@ -440,6 +499,7 @@ int main() {
                 int resultado_out;
                 if (opcao == 7) resultado_out = executar_algoritmo("Decimation", &Decimation);
                 else resultado_out = executar_algoritmo("BlockAveraging", &BlockAveraging);
+                flag_nivel_zoom --;
                 
                 if (resultado_out != 0) {
                      printf("ERRO FATAL: Falha na execucao do algoritmo.\n");
@@ -448,7 +508,7 @@ int main() {
                 break;
 
             // --- OPÇÃO 9: Atualizar (Refresh) ---
-            case 9:
+            case 8:
                 if (!api_inicializada) {
                     printf("ERRO: Inicialize a API primeiro (Opcao 1).\n");
                     break;
@@ -460,7 +520,7 @@ int main() {
                 printf("   [C] Comando Refresh enviado.\n");
                 break;
 
-            case 10:
+            case 9:
                 ASM_Reset();
                 ASM_Pulse_Enable();
 
