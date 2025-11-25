@@ -276,6 +276,11 @@ void esperar_enter() {
     getchar(); // Espera pelo Enter
 }
 
+void reset_temporario() {
+    ASM_Reset();
+    ASM_Pulse_Enable();
+}
+
 /* ===================================================================
  * MAIN INTERATIVO
  * =================================================================== */
@@ -286,6 +291,8 @@ int main() {
     int img_carregada_c = 0;   // Imagem no buffer C (RAM)
     int img_enviada_fpga = 0; // Imagem enviada para a VRAM do FPGA
     int flag_nivel_zoom = 0; // 0 = Nenhum, -3 = Min, 3 = Max
+    int flag_deu_zoom_in = 0; // Indica se já foi feito zoom in
+    int flag_deu_zoom_out = 0; // Indica se já foi feito zoom out
     
     int opcao;
     char nome_arquivo[256];
@@ -462,6 +469,7 @@ int main() {
                 if (opcao == 5) resultado = executar_algoritmo("NearestNeighbor", &NearestNeighbor);
                 else if (opcao == 6) resultado = executar_algoritmo("PixelReplication", &PixelReplication);
                 flag_nivel_zoom ++;
+                flag_deu_zoom_in = 1;
 
                 
                 if (resultado != 0) {
@@ -500,6 +508,7 @@ int main() {
                 if (opcao == 7) resultado_out = executar_algoritmo("Decimation", &Decimation);
                 else resultado_out = executar_algoritmo("BlockAveraging", &BlockAveraging);
                 flag_nivel_zoom --;
+                flag_deu_zoom_out = 1;
                 
                 if (resultado_out != 0) {
                      printf("ERRO FATAL: Falha na execucao do algoritmo.\n");
@@ -521,8 +530,9 @@ int main() {
                 break;
 
             case 9:
-                ASM_Reset();
-                ASM_Pulse_Enable();
+                flag_deu_zoom_in = 0;
+                flag_deu_zoom_out = 0;
+                reset_temporario();
 
             // --- OPÇÃO 0: Encerrar ---
             case 0:
