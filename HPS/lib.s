@@ -18,12 +18,12 @@
     FPGA_BRIDGE_BASE: .word 0xFF200000
     FPGA_BRIDGE_SPAN: .word 0x00001000 @ 4 KB
 
-    @ --- HAVE TO FIX ADDRESSES --- DONE (CHECK QSYS LATER)
-
     @ --- PIOs OFFSETS (Qsys) ---
     .equ PIO_INSTR_OFS,    0x00
     .equ PIO_ENABLE,       0x10
     .equ PIO_FLAGS_OFS,    0x20
+    @.equ PIO_DATAOUT_OFS,  0x30
+    @.equ PIO_MEMSELECT,    0x40
 
     @ --- INSTRUCTIONS ---
     .equ INSTR_NOP,        0
@@ -52,18 +52,14 @@
     .equ FLAG_MIN_ZOOM_MASK,   8
 
     @ --- IMAGE PARAMETERS ---
-    .equ IMAGE_WIDTH,      320 @ pixels
-    .equ IMAGE_HEIGHT,     240 @ pixels
+    .equ IMAGE_WIDTH,      320   @ pixels
+    .equ IMAGE_HEIGHT,     240   @ pixels
     .equ IMAGE_SIZE,       76800 @ 76800 Bytes
 
     @ --- SYNCHRONIZATION PARAMETERS ---
 
     .equ TIMEOUT_LIMIT,    0x3500
     .equ DELAY_COUNT,      0x1000
-
-    @ --- STATUS CODES ---
-
-    @ to add
 
 @ ===================================================================
 @ BSS SECTION (Global Variables)
@@ -85,7 +81,7 @@
 @ Doesn't affects other flags
 
 _pulse_enable_safe:
-    PUSH    {R2, R3, R4}    @ Salva regs temporários
+    PUSH    {R2, R3, R4}    @ Save registers
     LDR     R4, =lw_bridge_ptr
     LDR     R4, [R4]        @ R4 = ponteiro base
 
@@ -112,7 +108,6 @@ _ASM_Set_Instruction:
     POP {R0, R4, R8}
     BX LR                    @ Returns (e.g from NearestNeighBor)
 
-@@@@ REVIEW - TO BE CHECKED
 @ _ASM_Get_Flag: Internal function
 @ Retorna 1 se a flag (passada em R0) estiver ativa, 0 se não
 @ Recebe: R0 = Máscara da Flag (ex: FLAG_DONE_MASK)
@@ -172,11 +167,11 @@ API_initialize:
     SVC 0
 
     CMP R0, #0
-    BLT mmap_fail         @ MAY VERIFY IF CMP IS CORRECT - TO BE CHECKED
+    BLT mmap_fail         
     
     LDR R1, =lw_bridge_ptr
     STR R0, [R1]
-    POP {R4-R11, PC}       @ RETURNS WITH POINTER IN R0
+    POP {R4-R11, PC}        @ RETURNS WITH POINTER IN R0
 
 open_fail:
     MOV R0, #-1             @ RETURNS (-1) ON OPEN ERROR 
@@ -213,7 +208,7 @@ API_close:
 
 @ --- ASM_Store (R0=address, R1=pixel_data) ---
 @ BLOCKING FUNCTION - !
-@ Uses _pulse_enaBLe_internal and _wait_for_done_internal
+@ Uses _pulse_enable_internal and _wait_for_done_internal
 
 .global ASM_Store
 .type ASM_Store, %function
