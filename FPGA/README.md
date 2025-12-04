@@ -1,140 +1,166 @@
-**Universidade Estadual de Feira de Santana (UEFS)**
+# 📷 Coprocessador Gráfico FPGA com Zoom Regional (DE1-SoC)
 
-**Disciplina:** Sistemas Digitais (TEC499) - 2025.2
+![Status](https://img.shields.io/badge/Status-Concluído-success)
+![Hardware](https://img.shields.io/badge/Hardware-DE1--SoC-blue)
+![Language](https://img.shields.io/badge/Language-Verilog%20%7C%20C%20%7C%20Assembly-orange)
 
-**Equipe:** Adson Victor, Guilherme Moreira, Maria José
+## 1. Definição do Problema
 
-## Sumário
-1. [Visão Geral do Sistema](#visão-geral-do-sistema)
+Este projeto visa desenvolver um sistema **SoC (System on Chip)** utilizando a placa DE1-SoC para aceleração de hardware de processamento de imagens. O objetivo principal é criar um coprocessador gráfico em FPGA capaz de realizar operações de Zoom em tempo real (*Upscaling* e *Downscaling*) em imagens, controladas por uma CPU ARM via barramento.
+
+Um requisito fundamental é a **interatividade**: o usuário seleciona, via mouse, as coordenadas exatas de uma janela de interesse. Essas coordenadas são transmitidas para o hardware, que reconfigura seus parâmetros para processar apenas a região delimitada.
 
 ---
-Coprocessador FPGA para Processamento de Imagens em Tons de Cinza
+
+## 2. Fundamentação Teórica
+
+Este projeto integra conceitos de Arquitetura de Computadores (Aceleração de Hardware) e Processamento Digital de Imagens (PDI). Abaixo, detalham-se os princípios matemáticos e lógicos que regem o funcionamento do coprocessador.
+
+### 2.1 Imagem Digital como Matriz
+Computacionalmente, a imagem carregada é tratada como uma função discreta $f(x, y)$, onde $x$ e $y$ são coordenadas espaciais e o valor de $f$ é a intensidade luminosa.
+* **Profundidade:** O sistema opera em escala de cinza de 8 bits, permitindo $2^8 = 256$ níveis de intensidade ($0=$ preto, $255=$ branco).
+* **Mapeamento:** A memória linear da FPGA é endereçada pela fórmula: $Addr = y \times Width + x$.
+
+### 2.2 Algoritmos de Upscaling (Zoom In)
+O aumento da resolução espacial envolve a estimativa de valores para pixels que não existem na imagem original.
+
+#### A. Vizinho Mais Próximo (Nearest Neighbor)
+É a técnica de interpolação de ordem zero. Para cada pixel na grade de destino $(x', y')$, projeta-se sua coordenada de volta à grade original $(x, y)$ e atribui-se o valor do inteiro mais próximo.
+* **Modelo Matemático:** $f(x', y') = f(\text{round}(x), \text{round}(y))$.
+* **Implicação no Hardware:** É o algoritmo mais rápido, pois não requer operações aritméticas complexas (somas ou multiplicações), apenas acessos à memória.
+* **Artefatos:** Gera o efeito de "blocagem" ou serrilhado (*aliasing*), pois descontinua as bordas da imagem.
+
+#### B. Replicação de Pixel (Pixel Replication)
+Uma otimização de hardware do vizinho mais próximo para fatores de escala inteiros. Se o fator de zoom é $K$, cada pixel original é repetido $K$ vezes na horizontal e $K$ vezes na vertical.
+* **Implementação na FPGA:** O controlador de vídeo lê o mesmo endereço de memória múltiplas vezes antes de incrementar o contador de colunas/linhas, reduzindo a necessidade de lógica de cálculo de endereços na Unidade de Execução.
+
+### 2.3 Algoritmos de Downscaling (Zoom Out)
+A redução da resolução espacial exige o descarte ou a fusão de informações para evitar poluição visual.
+
+#### A. Decimação (Subsampling)
+Reduz a imagem mantendo apenas o $n$-ésimo pixel e descartando os demais.
+* **Processo:** Para um fator de 2, o sistema lê os pixels nas posições $(0,0), (0,2), (0,4)...$ e ignora as colunas ímpares.
+* **Custo Computacional:** Extremamente baixo ($O(1)$ por pixel gerado), ideal para visualização rápida.
+* **Desvantagem:** Viola o Teorema de Nyquist se a imagem contiver altas frequências, gerando *aliasing* (padrões de interferência ou "moiré").
+
+#### B. Média de Blocos (Block Averaging)
+Técnica que substitui um bloco de $N \times N$ pixels pela média aritmética de seus valores.
+* **Modelo Matemático:**
+  $$Pixel_{novo} = \frac{1}{N^2} \sum_{i=0}^{N-1} \sum_{j=0}^{N-1} f(x+i, y+j)$$
+* **Vantagem Visual:** Atua como um **Filtro Passa-Baixa**, suavizando a imagem e reduzindo ruído de alta frequência antes da redução, o que mitiga o *aliasing*.
+* **Custo no Hardware:** Exige somadores e um divisor (ou *bit-shifter* para potências de 2). No projeto, a divisão por 4 é realizada via deslocamento de bits (`>> 2`), otimizando o uso de células lógicas da FPGA.
+
+### 2.4 Arquitetura de Aceleração (Offloading)
+O sistema baseia-se no princípio de **Offloading Computacional**:
+1.  **Gargalo de Von Neumann:** Processar 76.800 pixels (320x240) iterativamente na CPU seria lento devido ao overhead de busca de instruções.
+2.  **Paralelismo Espacial:** A FPGA (Hardware) possui uma *Unit for Algorithm Execution* (UAE) dedicada. Enquanto a CPU ARM gerencia a interface do usuário (mouse/teclado), o hardware manipula o fluxo de bits da imagem em paralelo ao sinal de vídeo.
+3.  **Memory Mapped I/O (MMIO):** A comunicação não ocorre por cópia de dados tradicional, mas pelo mapeamento direto dos endereços físicos da ponte HPS-FPGA para o espaço virtual do Linux, permitindo latência mínima.
 ---
-## 1. Visão Geral do Sistema
-Este projeto se baseia no desenvolvimento de uma API (Application Programming Interface) feita em **Assembly** para um coprocessador customizado pela equipe, esse que vai ser destinado ao processamento de imagens em escala de cinza. A solução deve ser executada em um hardware embarcado utilizando um Hard Processor System (HPS) ARM como processador principal para comunicação e gerenciamento. As imagens fornecidas pelo usuário devem ser recebidas primeiramente pelo programa e então passadas para o processador para a devida aplicação dos algortimos de zoom fornecidos pelo sistema, elas devem estar em uma resolução especifica de 320x240 _pixels_ e devem estar na escala cinza.
-É claro! Aqui está o conteúdo para o arquivo README.md, formatado em Markdown, com base na descrição do projeto que você forneceu.
 
-## 2. Objetivo e Aceleração
+## 3. Descrição da Solução (Arquitetura)
 
-O foco é a aceleração do tratamento de dados de imagens ao delegar a execução de operações intensivas (como o zoom) ao coprocessador em FPGA.
+A solução utiliza uma arquitetura de camadas (*Hardware/Software Co-Design*).
 
-    HPS (ARM): Responsável por atividades de alto nível, como interface de usuário, gerência de arquivos (recebimento de imagens via Ethernet/SD) e controle geral.
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/5f1b0b24-afc5-43f9-b6e8-699ec44ee951" alt="Diagrama de Camadas" width="700px"> 
 
-    FPGA (Coprocessador): Atua como acelerador, executando o algoritmo de zoom sob demanda, reduzindo a carga de trabalho do ARM e otimizando o desempenho geral do sistema.
+  <p><em>Fig 1: Pilha de Arquitetura do Sistema</em></p>
+</div>
 
-## 3. Arquitetura do Sistema
+### 3.1 Hardware (FPGA)
+O acelerador segue o modelo *Control-Datapath* com gerenciamento de endereçamento dedicado.
 
-A arquitetura se baseia em uma divisão clara entre software e hardware para isolar o processamento de pixels e as operações de deslocamento/zoom. A comunicação entre o HPS e o Coprocessador é realizada através de Barramentos PIO (Parallel Input/Output).
+```mermaid
+flowchart TD
+    INSTRUCTION([INSTRUCTION]) --> UC
+    ADDR_MEM([ADDR MEM]) --> ACU
+    DATA_IN([DATA_IN]) --> MEM_A
 
-### 3.1. Blocos Principais
+    subgraph Control_Plane [Plano de Controle]
+        UC(Unidade de Controle):::control
+        ACU[Address Control Unit]:::control
+    end
 
-Bloco	Descrição	Implementação Principal
-Qsys System (soc_system)	Integração do processador ARM (HPS), módulos PIO, e lógicas auxiliares (clocks, reset).	soc_system.qsys
-Coprocessador	Lógica dedicada para interpretar a ISA, gerenciar memória de imagem, e executar as operações de zoom. Contém uma FSM e um datapath dedicado.	main.v
-VGA Output	Interface para exibição das imagens ampliadas em um monitor padrão.	Módulo da placa DE1-SoC
-Barramentos PIO	Estruturas para troca de sinais de controle, endereço, dados e flags entre HPS e Coprocessador.	Mapeado via Qsys
+    UC -->|Enable, Step, Op| ACU
+    ACU -->|Addr rd/wr| MEM_A
+    ACU -->|Addr rd/wr| MEM_C
 
-### 3.2. Interação com o Código em C
+    subgraph Memory_Hierarchy [Hierarquia de Memória]
+        MEM_A[Mem A - Input]
+        MEM_C[Mem C - Swap]
+        MEM_B[Mem B - Video]
+    end
 
-O código C rodando no HPS é o controlador mestre. Ele:
+    MEM_A -->|Pixel In| UAE[Unit for Algo Execution]
+    UAE -->|Pixel Out| MEM_C
+    MEM_C --> MEM_B
+    MEM_B --> VGA_CTRL[VGA Controller]
+    
+    classDef control fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef memory fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
 
-    Lê e prepara a imagem.
+```
+#### 3.1.1 Detalhamento do Subsistema de Vídeo (`vga_module.v`)
+O módulo VGA é o componente de mais baixo nível, responsável por gerar os sinais de temporização analógica para o monitor (640x480 @ 60Hz). Ele opera com um clock de 25MHz e implementa duas **Máquinas de Estados Finitos (FSM)** paralelas:
 
-    Monta comandos na forma da ISA definida (palavras de 32 bits).
+* **FSM Horizontal:** Gerencia as varreduras de linha. Transita pelos estados `H_ACTIVE` (desenho), `H_FRONT`, `H_PULSE` (Sincronismo) e `H_BACK`. Gera o sinal `line_done` ao final de cada linha.
+* **FSM Vertical:** Gerencia a varredura de quadros (frames). Incrementada apenas quando uma linha horizontal é concluída.
 
-    Escreve os comandos nos registradores PIO (instructIn).
+**Características Críticas:**
+* **Interface de Coordenadas (`next_x`, `next_y`):** O módulo calcula qual pixel deve ser desenhado no *próximo* ciclo de clock. Esses sinais são enviados para a memória de vídeo (`Mem B`) para buscar o dado antecipadamente.
+* **Sinais de Sincronismo (`hsync`, `vsync`):** Gerados com polaridade ativa baixa/alta configurável, essenciais para que o monitor mantenha a imagem estável.
+* **Blanking:** Garante que os canais de cor (R, G, B) sejam zerados (preto) durante os períodos de *Front/Back Porch* e *Sync Pulse*, evitando artefatos visuais nas bordas da tela.
 
-    Aciona o pulso de ativação (enableIn).
+#### 3.1.2 Subsistema de Gerenciamento de Clock (PLL)
+O sistema integra o módulo **`pll_0002`**, uma instância do IP Core *Altera PLL* configurado para a família Cyclone V. Este componente é responsável por derivar os domínios de tempo necessários a partir do oscilador de cristal de 50 MHz da placa DE1-SoC.
 
-    Aguarda pelas flags de resposta (flagsOut) e lê o resultado (data_out).
+**Parâmetros de Síntese (Extraídos do RTL):**
+O PLL opera em modo **Normal** com multiplicador de VCO não-fracionário (`fractional_vco_multiplier="false"`), garantindo estabilidade de fase (Phase Shift 0ps) para todos os canais.
 
-## 4. Funcionalidades e ISA (Instruction Set Architecture)
+| Porta | Frequência | Duty Cycle | Aplicação Arquitetural |
+| :--- | :--- | :--- | :--- |
+| **Input (`refclk`)** | **50.0 MHz** | - | **Clock de Referência:** Fonte externa (Cristal da DE1-SoC). |
+| **Output 0 (`outclk_0`)** | **100.0 MHz** | 50% | **System Clock (Fast Domain):** Alimenta a Unidade de Controle e a lógica de processamento (UAE). A frequência de 100MHz permite que o hardware execute 4 ciclos de lógica para cada ciclo de pixel VGA, garantindo *throughput* suficiente para os algoritmos. |
+| **Output 1 (`outclk_1`)** | **25.0 MHz** | 50% | **Pixel Clock (Video Domain):** Frequência exata exigida pelo padrão VESA para temporização VGA 640x480 @ 60Hz. Alimenta exclusivamente o módulo `vga_module`. |
+| **Output 2 (`outclk_2`)** | **100.0 MHz** | 50% | **Clock Auxiliar 1:** Disponível para interfaces de memória externa ou lógica de alta velocidade adicional. |
+| **Output 3 (`outclk_3`)** | **100.0 MHz** | 50% | **Clock Auxiliar 2:** Porta de expansão de clock. |
 
-O coprocessador implementa uma ISA enxuta com três classes de instrução, focadas em transferência de dados e execução de zoom:
-Classe	Descrição
-LOAD	Leitura de dado da memória de imagem.
-STORE	Escrita de dado na memória de imagem.
-ZOOM	Execução da operação de ampliação/redução sobre uma região.
+**Sincronização de Reset (`locked`):**
+O módulo exporta o sinal `locked`, que indica o travamento da fase do PLL. Este sinal é utilizado na lógica de *System Reset*: o sistema gráfico permanece paralisado até que `locked` seja alto, prevenindo a operação de circuitos digitais com clocks instáveis durante a inicialização.
 
-### 4.1. Formato da Instrução (Palavra de 32 bits)
+### 3.2 Software (Driver & App)
+* **Aplicação (C):** Interface CLI, gestão de mouse (`/dev/input`) e cache de níveis de zoom.
+* **Driver (Assembly):** Middleware que usa um **Pacote de Instrução Unificado (29 bits)** para eficiência no barramento.
 
-Bits	Função
-[2:0]	Código da operação (OpCode)
-[19:3]	Endereço de memória
-[28:21]	Dado de entrada (apenas para STORE)
-[31:29]	Reservado
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/70e9fe26-0292-4902-acba-0febb61cd639" alt="Teclado Lenovo KU-1619" width="50%"> 
 
-### 4.2. Algoritmo de Zoom
+  <br><sub>Figura: Conversão</sub> 
 
-O algoritmo empregado é o "Nearest Neighbor" (Vizinho Mais Próximo). Ele é ideal para hardware embarcado por sua baixa complexidade e bom desempenho, realizando o zoom através da replicação de pixels conforme um fator definido.
+</div>
 
-## 5. Barramentos PIO e Sinais de Comunicação
 
-Sinal	Direção	Função	Largura
-instructIn	Entrada	Palavra de comando (ISA, endereço, dado)	32
-enableIn	Entrada	Pulso de ativação do coprocessador	1
-flagsOut	Saída	Sinalização de status (done, erro, limites)	4
-data_out	Saída	Retorno para leitura de dados (LOAD)	8
+## 4. Metodologia de Testes
+A validação focou na **Integração e Fluxo de Controle**, visto que a lógica RTL base já havia sido validada <a href="https://github.com/DestinyWolf/Problema-SD-2025-2">aqui</a>
 
-### 5.1. Detalhamento dos Sinais de Saída (flagsOut)
+### ✅ Teste de Fluxo via LEDs
+Utilizamos a matriz de LEDs da DE1-SoC para diagnóstico visual:
+1. Estados da FSM foram mapeados para LEDs específicos.
+2. Verificou-se visualmente a transição `Idle` $\to$ `Processing` $\to$ `Done` ao enviar comandos do software.
 
-Os 4 bits do sinal flagsOut indicam o status da operação:
+---
 
-    DONE: Processamento da instrução concluído.
+## 5. Análise de Resultados
+O sistema atingiu os objetivos, carregando BMPs e aplicando zoom em tempo real na saída VGA.
 
-    ERROR: Instrução incorreta, endereço fora do mapeamento ou dado inválido.
+<div align="center">
+  <img src="CAMINHO_DO_GIF_XADREZ.gif" alt="Funcionamento VGA" width="600px">
+  <p><em>Fig 2: Sistema em operação exibindo padrão de teste.</em></p>
+</div>
 
-    ZOOM_MIN: Tentativa de zoom abaixo do limite permitido.
+### 🛠️ Problemas e Correções (Troubleshooting)
 
-    ZOOM_MAX: Tentativa de zoom acima do limite permitido.
-
-    Protocolo de Comunicação: É mandatório que o sinal enableIn seja desativado após cada operação para garantir a sincronização entre software (HPS) e hardware (FPGA).
-
-## 6. Estrutura de Pastas e Arquivos
-
-O código fonte de hardware e a estrutura de integração estão localizados na pasta FPGA/:
-
-    ghrd_top.v: Módulo superior de integração, interliga o sistema Qsys e o coprocessador principal.
-
-    main.v: Contém a implementação do coprocessador, incluindo o interpretador da ISA, FSM de controle, acesso à memória e o algoritmo de zoom.
-
-    soc_system.qsys: Projeto do sistema Qsys, definindo a interconexão (barramentos, PIOs, clocks) entre o HPS e a lógica FPGA.
-
-    Outros Arquivos: Utilitários e componentes auxiliares (reset, detectores de borda, scripts de simulação).
-
-## 7. Como Utilizar/Testar o Projeto
-
-### 7.1. Pré-requisitos
-
-    Software: Quartus Prime (Altera/Intel) compatível com a DE1-SoC.
-
-    Hardware: Placa DE1-SoC com Cyclone V e cabo USB-Blaster.
-
-    Software Host: Ambiente de desenvolvimento e compilação C para ARM Linux.
-
-    Imagem: Imagem de teste em tons de cinza, preparada para transferência ao HPS.
-
-### 7.2. Etapas de Execução
-
-    Compilação FPGA: Abra o Quartus, compile os arquivos Verilog (FPGA/) e gere o bitstream (.sof).
-
-    Configuração da Placa: Programe a placa DE1-SoC via USB-Blaster com o bitstream gerado.
-
-    Software C: No Linux do HPS, compile e execute o software C de interface. Este software irá:
-
-        Ler a imagem de teste.
-
-        Montar e enviar as instruções (palavras de 32 bits) via PIO (instructIn).
-
-        Gerar o pulso em enableIn.
-
-        Ler o flagsOut para verificar status (DONE, ERROR, etc.) e o data_out para resultados.
-
-    Verificação: A saída do zoom pode ser conferida no monitor via a interface VGA da placa.
-
-## 8. Erros Comuns e Alertas
-
-Status (Flag Ativa)	Causa Comum	Ação Recomendada
-ERROR	Instrução desconhecida; Endereço fora do mapeamento; Dado inválido (STORE).	Verifique a codificação do OpCode e os limites de endereço.
-ZOOM_MIN/MAX	Fator de zoom solicitado excede os limites estabelecidos pelo hardware.	Ajuste o fator de zoom dentro dos parâmetros válidos.
-Sem Resposta em DATA_OUT	enableIn não foi acionado ou o protocolo de handshake falhou.	Certifique-se de que o enableIn é setado e desativado corretamente em cada ciclo.
+| Problema | Causa Técnica | Solução Aplicada |
+| :--- | :--- | :--- |
+| **Travamento no Input** | Conflito entre `clear_input_buffer()` e `scanf` limpando buffer 2x. | Remoção da limpeza redundante na função de espera. |
+| **Instabilidade no Zoom** | *Race Condition* ao apertar teclas rápido demais (sem fila de hardware). | Trava de software (Polling) aguardando `FLAG_DONE` antes de novo envio. |
