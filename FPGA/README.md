@@ -144,8 +144,8 @@ O módulo exporta o sinal `locked`, que indica o travamento da fase do PLL. Este
 A validação focou na **Integração e Fluxo de Controle**, visto que a lógica RTL base já havia sido validada <a href="https://github.com/DestinyWolf/Problema-SD-2025-2">aqui</a>
 
 ### ✅ Teste de Fluxo via LEDs
-Utilizamos a matriz de LEDs da DE1-SoC para diagnóstico visual:
-1. Estados da FSM foram mapeados para LEDs específicos.
+Utilizamos a matriz de LEDs da DE1-SoC para diagnóstico visual temporário:
+1. Estados da FSM foram mapeados para LEDs específicos através do fluxo das instruções. Os filetes de led acendiam aleatoriamente e mudavam sua organização de acordo com a nova instrução a ser processada pelo Verilog.
 2. Verificou-se visualmente a transição `Idle` $\to$ `Processing` $\to$ `Done` ao enviar comandos do software.
 
 ---
@@ -154,13 +154,10 @@ Utilizamos a matriz de LEDs da DE1-SoC para diagnóstico visual:
 O sistema atingiu os objetivos, carregando BMPs e aplicando zoom em tempo real na saída VGA.
 
 <div align="center">
-  <img src="CAMINHO_DO_GIF_XADREZ.gif" alt="Funcionamento VGA" width="600px">
-  <p><em>Fig 2: Sistema em operação exibindo padrão de teste.</em></p>
+  <img src="https://github.com/user-attachments/assets/0924b4f7-84e0-4bea-bc96-03bc1e301bcc" alt="Funcionamento VGA" width="600px"> 
+
+  <p><em>Fig 2: Sistema em operação na janela padrão de 320x240 </em></p>
 </div>
 
 ### 🛠️ Problemas e Correções (Troubleshooting)
-
-| Problema | Causa Técnica | Solução Aplicada |
-| :--- | :--- | :--- |
-| **Travamento no Input** | Conflito entre `clear_input_buffer()` e `scanf` limpando buffer 2x. | Remoção da limpeza redundante na função de espera. |
-| **Instabilidade no Zoom** | *Race Condition* ao apertar teclas rápido demais (sem fila de hardware). | Trava de software (Polling) aguardando `FLAG_DONE` antes de novo envio. |
+Felizmente essa etapa do projeto não trouxe problemas, mesmo com as novas implementações.
